@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CASE 2897 偵查進度</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 12px;
+            overflow: hidden;
+        }
+
+        /* 檔案外殼：維持緊湊的 max-width 440px，與原始精緻尺寸一致 */
+        .dossier-shell {
+            width: 100%;
+            max-width: 440px;
+            border-radius: 8px;
+            padding: 12px 14px 14px 14px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background-color: #FAF7F2;
+            border: 1px solid #EAE3DC;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        /* 內部主卡片：固定高度 132px，內距精準緊湊 */
+        .widget-card {
+            width: 100%;
+            height: 132px;
+            position: relative;
+            background-color: #F4EFEA;
+            border: 1px solid #E3DBD3;
+            border-radius: 6px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+
+        /* 頂部標題與狀態列 */
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            flex-shrink: 0;
+        }
+
+        .title-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .icon-badge {
+            width: 20px;
+            height: 20px;
+            background-color: #EAE3DC;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .icon-badge svg {
+            width: 12px;
+            height: 12px;
+            color: #5C5346;
+        }
+
+        .title-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: #3C362A;
+            letter-spacing: 0.2px;
+        }
+
+        /* 狀態標籤 (綠色閃爍) */
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background-color: #ECFDF5;
+            border: 1px solid #A7F3D0;
+            padding: 2px 7px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #047857;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background-color: #10B981;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+
+        .status-badge-ended {
+            background-color: #FEF3C7;
+            border: 1px solid #FDE68A;
+            color: #B45309;
+        }
+
+        .status-dot-ended {
+            background-color: #F59E0B;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.6; }
+            50% { transform: scale(1.25); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.6; }
+        }
+
+        /* 雙卡片區塊 */
+        .cards-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin: 2px 0;
+            flex-grow: 1;
+        }
+
+        .metric-card {
+            background-color: #FAF7F2;
+            border: 1px solid #EAE3DC;
+            border-radius: 6px;
+            padding: 5px 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .metric-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .metric-label {
+            font-size: 11.5px;
+            font-weight: 500;
+            color: #6C6253;
+        }
+
+        .metric-value-wrap {
+            display: flex;
+            align-items: baseline;
+            gap: 2px;
+        }
+
+        .metric-number {
+            font-size: 19px;
+            font-weight: 700;
+            color: #3C362A;
+            line-height: 1;
+        }
+
+        .metric-unit {
+            font-size: 11.5px;
+            font-weight: 500;
+            color: #6C6253;
+        }
+
+        .metric-bottom {
+            font-size: 10px;
+            color: #8C8273;
+            margin-top: 2px;
+            text-align: center;
+        }
+
+        /* 分隔線與進度條 */
+        .divider {
+            border: none;
+            border-top: 1px solid #EAE3DC;
+            margin: 2px 0;
+        }
+
+        .progress-section {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .progress-title {
+            font-size: 10.5px;
+            color: #8C8273;
+            white-space: nowrap;
+        }
+
+        .progress-bar-bg {
+            flex-grow: 1;
+            height: 4px;
+            background-color: #EAE3DC;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #7A7062;
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+
+        .progress-percent {
+            font-size: 10.5px;
+            font-weight: 600;
+            color: #6C6253;
+            width: 28px;
+            text-align: right;
+        }
+
+        /* 結案畫面樣式 */
+        .ended-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+            text-align: center;
+            padding: 2px 0;
+        }
+
+        .ended-title {
+            font-size: 19px;
+            font-weight: 700;
+            color: #3C362A;
+            margin-bottom: 2px;
+            letter-spacing: 0.5px;
+        }
+
+        .ended-subtitle {
+            font-size: 12.5px;
+            font-weight: 500;
+            color: #6C6253;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dossier-shell">
+    <div class="widget-card" id="widgetCard">
+        <!-- 動態渲染內容 -->
+    </div>
+</div>
+
+<script>
+    function renderWidget() {
+        const startDate = new Date(2026, 9, 22); // 2026-10-22
+        const endDate = new Date(2026, 11, 1);     // 2026-12-01
+        
+        const today = new Date();
+        // 測試結案可取消下面註解：
+        // const today = new Date(2026, 11, 1);
+
+        const oneDay = 24 * 60 * 60 * 1000;
+        
+        // 累積偵查天數（包含起始當天）
+        const elapsedDays = Math.max(1, Math.floor((today - startDate) / oneDay) + 1);
+        
+        // 距離預定結案天數
+        const remainingDays = Math.max(0, Math.ceil((endDate - today) / oneDay));
+        
+        // 百分比計算
+        const totalDurationDays = Math.round((endDate - startDate) / oneDay);
+        const currentProgressDays = Math.floor((today - startDate) / oneDay);
+        let percent = Math.round((currentProgressDays / totalDurationDays) * 100);
+        percent = Math.max(0, Math.min(100, percent));
+
+        const card = document.getElementById('widgetCard');
+        const isEnded = today >= endDate;
+
+        if (isEnded) {
+            // 結案畫面
+            card.innerHTML = `
+                <div class="header-row">
+                    <div class="title-group">
+                        <div class="icon-badge">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        </div>
+                        <span class="title-text">CASE 2897 · 偵查進度</span>
+                    </div>
+                    <div class="status-badge status-badge-ended">
+                        <span class="status-dot status-dot-ended"></span>
+                        偵查完畢
+                    </div>
+                </div>
+                
+                <hr class="divider">
+
+                <div class="ended-content">
+                    <div class="ended-title">恭喜結案</div>
+                    <div class="ended-subtitle">嫌疑人無罪釋放</div>
+                </div>
+            `;
+        } else {
+            // 偵查中畫面
+            card.innerHTML = `
+                <div class="header-row">
+                    <div class="title-group">
+                        <div class="icon-badge">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        </div>
+                        <span class="title-text">CASE 2897 · 偵查進度</span>
+                    </div>
+                    <div class="status-badge">
+                        <span class="status-dot"></span>
+                        偵查中
+                    </div>
+                </div>
+
+                <div class="cards-container">
+                    <!-- 累積偵查天數 -->
+                    <div class="metric-card">
+                        <div class="metric-top">
+                            <span class="metric-label">累積偵查天數</span>
+                            <div class="metric-value-wrap">
+                                <span class="metric-number">${elapsedDays}</span>
+                                <span class="metric-unit">天</span>
+                            </div>
+                        </div>
+                        <div class="metric-bottom">自 2026.10.22 日起</div>
+                    </div>
+
+                    <!-- 距離預定結案 -->
+                    <div class="metric-card">
+                        <div class="metric-top">
+                            <span class="metric-label">距離預定結案</span>
+                            <div class="metric-value-wrap">
+                                <span class="metric-number">${remainingDays}</span>
+                                <span class="metric-unit">天</span>
+                            </div>
+                        </div>
+                        <div class="metric-bottom">2026.12.01 結案</div>
+                    </div>
+                </div>
+
+                <hr class="divider">
+
+                <div class="progress-section">
+                    <span class="progress-title">時程偵查進度</span>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" style="width: ${percent}%;"></div>
+                    </div>
+                    <span class="progress-percent">${percent}%</span>
+                </div>
+            `;
+        }
+    }
+
+    renderWidget();
+</script>
+
+</body>
+</html>
