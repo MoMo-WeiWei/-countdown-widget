@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CASE 2897 · 偵查進度</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: transparent;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.25); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .pulse-dot {
+            animation: pulse-ring 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="p-2 md:p-4 flex items-center justify-center min-h-[240px]">
+    <!-- Main Container in Warm Cream-Grey Palette -->
+    <div class="w-full max-w-lg bg-[#FAF7F2] text-[#5C5346] rounded-2xl border border-[#E6DFD5] shadow-sm p-5 md:p-6 transition-all relative">
+        
+        <!-- Header Bar -->
+        <div class="flex items-center justify-between pb-4 border-b border-[#E6DFD5]">
+            <div class="flex items-center space-x-2.5">
+                <div class="w-7 h-7 rounded-lg bg-[#EFECE6] flex items-center justify-center text-[#7A7062] border border-[#E2DAD0]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+                </div>
+                <h1 class="font-bold text-base md:text-lg tracking-tight text-[#5C5346]">CASE 2897 · 偵查進度</h1>
+            </div>
+
+            <!-- Status Badge (Green blinking light for active, Yellow for completed) -->
+            <div id="status-badge" class="flex items-center space-x-1.5 bg-[#ECFDF5] text-[#047857] px-3 py-1 rounded-full text-xs font-medium shadow-xs border border-[#A7F3D0] transition-all">
+                <span class="relative flex h-2 w-2">
+                  <span id="status-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span id="status-dot" class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span id="status-text">偵查中</span>
+            </div>
+        </div>
+
+        <!-- ACTIVE SECTION: 2 Cards + Compact Progress Line -->
+        <div id="active-section" class="mt-5 space-y-4">
+            <div class="grid grid-cols-2 gap-3 md:gap-4">
+                
+                <!-- Left Box: Accumulated Days -->
+                <div class="bg-[#F5F0E6] rounded-xl p-4 border border-[#E6DFD5] flex flex-col justify-between shadow-xs">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs md:text-sm font-medium text-[#7A7062]">累計偵查天數</span>
+                        <div class="flex items-baseline">
+                            <span id="elapsed-days" class="text-3xl md:text-4xl font-extrabold tracking-tight text-[#5C5346]">--</span>
+                            <span class="text-xs font-medium text-[#7A7062] ml-0.5">天</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <span class="text-[11px] text-[#8C8275]">自 2026.10.22 日起</span>
+                    </div>
+                </div>
+
+                <!-- Right Box: Remaining Days -->
+                <div class="bg-[#F5F0E6] rounded-xl p-4 border border-[#E6DFD5] flex flex-col justify-between shadow-xs">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs md:text-sm font-medium text-[#7A7062]">距離預定結案</span>
+                        <div class="flex items-baseline">
+                            <span id="remaining-days" class="text-3xl md:text-4xl font-extrabold tracking-tight text-[#5C5346]">--</span>
+                            <span class="text-xs font-medium text-[#7A7062] ml-0.5">天</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <span class="text-[11px] text-[#8C8275]">2026.12.01 結案</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Thin Divider -->
+            <hr class="border-t border-[#E6DFD5] my-2">
+
+            <!-- Compact Progress Line -->
+            <div class="flex items-center space-x-3 text-xs text-[#7A7062] px-1">
+                <span class="font-medium whitespace-nowrap">時程偵查進度</span>
+                <div class="flex-1 bg-[#E6DFD5] rounded-full h-2 overflow-hidden">
+                    <div id="progress-bar-fill" class="bg-[#5C5346] h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+                <span id="progress-percentage" class="font-bold text-[#5C5346] whitespace-nowrap">--%</span>
+            </div>
+        </div>
+
+        <!-- CLOSED SECTION: Shown automatically on Dec 01 and beyond -->
+        <div id="closed-section" class="hidden py-8 md:py-10 text-center flex flex-col items-center justify-center transition-all">
+            <h2 class="text-4xl md:text-5xl font-extrabold tracking-widest text-[#5C5346] mb-3">恭喜結案</h2>
+            <p class="text-base md:text-lg font-medium text-[#7A7062] tracking-wider">嫌疑人無罪釋放</p>
+        </div>
+
+    </div>
+
+    <script>
+        // Target dates: Start Oct 22, 2026, End Dec 01, 2026
+        const startDate = new Date('2026-10-22T00:00:00');
+        const endDate = new Date('2026-12-01T00:00:00');
+        
+        function calculateProgress() {
+            const today = new Date();
+            const startDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+            const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+            const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            
+            const totalSpanDays = Math.round((endDay - startDay) / oneDayMs);
+            const elapsedDays = Math.max(1, Math.floor((todayDay - startDay) / oneDayMs) + 1);
+            const remainingDays = Math.max(0, Math.round((endDay - todayDay) / oneDayMs));
+
+            document.getElementById('elapsed-days').textContent = elapsedDays;
+            document.getElementById('remaining-days').textContent = remainingDays;
+
+            // Progress percentage calculation
+            const percentage = Math.min(100, Math.max(0, Math.round((elapsedDays / (totalSpanDays + 1)) * 100)));
+            document.getElementById('progress-percentage').textContent = percentage + '%';
+            document.getElementById('progress-bar-fill').style.width = percentage + '%';
+
+            // Auto-detect conclusion on or after Dec 01
+            const isClosed = todayDay >= endDay;
+
+            const activeSection = document.getElementById('active-section');
+            const closedSection = document.getElementById('closed-section');
+            const statusBadge = document.getElementById('status-badge');
+            const statusText = document.getElementById('status-text');
+            const statusDot = document.getElementById('status-dot');
+            const statusPing = document.getElementById('status-ping');
+
+            if (isClosed) {
+                activeSection.classList.add('hidden');
+                closedSection.classList.remove('hidden');
+                
+                // Yellow "偵查完畢" status
+                statusBadge.className = "flex items-center space-x-1.5 bg-[#FEF3C7] text-[#B45309] px-3 py-1 rounded-full text-xs font-medium shadow-xs border border-[#FDE68A] transition-all";
+                statusDot.className = "relative inline-flex rounded-full h-2 w-2 bg-amber-500";
+                statusPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75";
+                statusText.textContent = "偵查完畢";
+            } else {
+                activeSection.classList.remove('hidden');
+                closedSection.classList.add('hidden');
+                
+                // Green "偵查中" status with pulse
+                statusBadge.className = "flex items-center space-x-1.5 bg-[#ECFDF5] text-[#047857] px-3 py-1 rounded-full text-xs font-medium shadow-xs border border-[#A7F3D0] transition-all";
+                statusDot.className = "relative inline-flex rounded-full h-2 w-2 bg-emerald-500";
+                statusPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
+                statusText.textContent = "偵查中";
+            }
+        }
+
+        // Run calculation on load
+        window.onload = calculateProgress;
+    </script>
+</body>
+</html>
